@@ -1,20 +1,24 @@
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
-import os, json
+import os
+import json
 import sqlite3
 from math import hypot
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 DB = "rutas.db"
 
+
 def get_db():
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     return con
 
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/nodes", methods=["GET", "POST"])
 def nodes():
@@ -28,6 +32,7 @@ def nodes():
         return jsonify({"id": cur.lastrowid, **data}), 201
     nodos = cur.execute("SELECT * FROM nodos").fetchall()
     return jsonify([dict(n) for n in nodos])
+
 
 @app.route("/nodes/<int:nid>", methods=["PUT", "DELETE"])
 def node_update(nid):
@@ -43,6 +48,7 @@ def node_update(nid):
     con.commit()
     return jsonify({"id": nid, **data})
 
+
 @app.route("/connections", methods=["GET", "POST"])
 def connections():
     con = get_db()
@@ -55,6 +61,7 @@ def connections():
         return jsonify({"id": cur.lastrowid, **data}), 201
     conns = cur.execute("SELECT * FROM conexiones").fetchall()
     return jsonify([dict(c) for c in conns])
+
 
 @app.route("/shortest_path", methods=["POST"])
 def shortest_path():
@@ -77,7 +84,8 @@ def shortest_path():
         while q:
             u = min(q, key=lambda x: dist[x])
             q.remove(u)
-            if u == end: break
+            if u == end:
+                break
             for v in graph[u]:
                 alt = dist[u] + graph[u][v]
                 if alt < dist[v]:
@@ -107,19 +115,26 @@ def shortest_path():
                      for i in range(len(full_path)-1))
     return jsonify(path=full_path, distance=round(total_dist, 1))
 
+
 @app.route("/export/nodos.csv")
 def export_nodos():
     con = get_db()
     rows = con.execute("SELECT * FROM nodos").fetchall()
-    csv = "id,name,lat,lng\n" + "\n".join(f"{r['id']},{r['name']},{r['lat']},{r['lng']}" for r in rows)
+    csv = "id,name,lat,lng\n" + \
+        "\n".join(f"{r['id']},{r['name']},{r['lat']},{r['lng']}" for r in rows)
     return csv, 200, {'Content-Type': 'text/csv'}
+
 
 @app.route("/export/conexiones.csv")
 def export_conexiones():
     con = get_db()
     rows = con.execute("SELECT * FROM conexiones").fetchall()
-    csv = "from_id,to_id,weight\n" + "\n".join(f"{r['from_id']},{r['to_id']},{r['weight']}" for r in rows)
+    csv = "from_id,to_id,weight\n" + \
+        "\n".join(f"{r['from_id']},{r['to_id']},{r['weight']}" for r in rows)
     return csv, 200, {'Content-Type': 'text/csv'}
 
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
